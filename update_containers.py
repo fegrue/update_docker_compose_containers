@@ -26,10 +26,9 @@ def run_update_in_subdirs(dir_path):
 
     for subdir in subdirs:
         docker_compose = os.path.join(subdir, "docker-compose.yaml")
-        update_script = os.path.join(subdir, "update.sh")
         run_update_file = os.path.join(subdir, "run_update")
 
-        if os.path.isfile(docker_compose) and os.path.isfile(update_script) and os.access(update_script, os.X_OK) and os.path.isfile(run_update_file):
+        if os.path.isfile(docker_compose) and os.access(update_script, os.X_OK) and os.path.isfile(run_update_file):
             services["going_to_be_updated"].append(subdir)
         else:
             print(f"Überspringe '{subdir}': Fehlende 'docker-compose.yaml', 'update.sh' oder 'run_update' Datei.")
@@ -51,7 +50,7 @@ def execute_update(subdir):
         services["not_updated_services"].append(subdir)
         return
 
-    print(f"Erfolgreich ausgeführt: '{subdir}/update.sh'")
+    print(f"Erfolgreich ausgeführt: ' update of docker compose: {subdir}'")
     services["going_to_be_updated"].remove(subdir) if subdir in services["going_to_be_updated"] else None
     services["updated_services"].append(subdir)
 
@@ -65,10 +64,11 @@ def main():
     args = parser.parse_args()
     run_update_in_subdirs(args.filename)
     
-    print("Updated services:")
-    for service in services["updated_services"]:
-        print(f" - {service}")
-    print("----------------------------")
+    if len(services["updated_services"])>0:
+        print("Updated services:")
+        for service in services["updated_services"]:
+            print(f" - {service}")
+        print("----------------------------")
     print("Services not updated (errors occurred):")
     for service in services["not_updated_services"]:
         print(f" - {service}")
