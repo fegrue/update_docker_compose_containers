@@ -1,11 +1,15 @@
+from calendar import c
 import os
+from pdb import run
 import subprocess
 import sys
 import argparse
 
-global updated_services
-updated_services = {"updated_services" : [],
-                    "not_updated_services" :[]}
+
+global services
+services = {"updated_services" : [],
+            "going_to_be_updated" : [],
+            "not_updated_services" :[]}
 
 
 def run_update_in_subdirs(dir_path):
@@ -22,30 +26,34 @@ def run_update_in_subdirs(dir_path):
 
     for subdir in subdirs:
         docker_compose = os.path.join(subdir, "docker-compose.yaml")
-        update_file = os.path.join(subdir, "update")
-        if os.path.isfile(docker_compose) and os.path.isfile(update_file) and os.access(update_file, os.X_OK):
-            execute_update(subdir)
+        update_script = os.path.join(subdir, "update.sh")
+        run_update_file = os.path.join(subdir, "run_update")
+
+        if os.path.isfile(docker_compose) and os.path.isfile(update_script) and os.access(update_script, os.X_OK) and os.path.isfile(run_update_file):
+            services["going_to_be_updated"].append(subdir)
+        else:
+            print(f"Überspringe '{subdir}': Fehlende 'docker-compose.yaml', 'update.sh' oder 'run_update' Datei.")
+            services["not_updated_services"].append(subdir)
+            continue
+    print(f"Gefundene Verzeichnisse mit 'docker-compose.yaml', 'update.sh' und 'run_update': {services['going_to_be_updated']}")
+    for subdir in services["going_to_be_updated"]:
+        
+        execute_update(subdir)
 
 
 def execute_update(subdir):
-
-
     try:
-
         subprocess.run(['docker', 'compose', 'pull'], cwd=subdir, check=True)
-        # subprocess.run(['docker compose down'], cwd=subdir, check=True)
-        subprocess.run(['docker', 'compose', 'down'], cwd=subdir, check=True)
         subprocess.run(['docker', 'compose', 'up', '-d'], cwd=subdir, check=True)
 
     except subprocess.CalledProcessError as e:
-        print(f"Fehler beim Ausführen von docker Befehlen")
-        updated_services["not_updated_services"].append(subdir)
-        print(f"Fehler: {e}", file=sys.stderr)
+        print(f"Fehler beim Ausführen von docker Befehlen in dem Verzeichnis '{subdir}': {e}", file=sys.stderr)
+        services["not_updated_services"].append(subdir)
         return
 
     print(f"Erfolgreich ausgeführt: '{subdir}/update.sh'")
-
-    updated_services["updated_services"].append(subdir)
+    services["going_to_be_updated"].remove(subdir) if subdir in services["going_to_be_updated"] else None
+    services["updated_services"].append(subdir)
 
 
 def main():
@@ -56,6 +64,14 @@ def main():
     parser.add_argument('filename')
     args = parser.parse_args()
     run_update_in_subdirs(args.filename)
+    
+    print("Updated services:")
+    for service in services["updated_services"]:
+        print(f" - {service}")
+    print("----------------------------")
+    print("Services not updated (errors occurred):")
+    for service in services["not_updated_services"]:
+        print(f" - {service}")
 
 
 if __name__ == '__main__':
