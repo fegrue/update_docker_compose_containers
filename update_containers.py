@@ -28,7 +28,7 @@ def run_update_in_subdirs(dir_path):
         docker_compose = os.path.join(subdir, "docker-compose.yaml")
         run_update_file = os.path.join(subdir, "run_update")
 
-        if os.path.isfile(docker_compose) and os.access(update_script, os.X_OK) and os.path.isfile(run_update_file):
+        if os.path.isfile(docker_compose) and os.path.isfile(run_update_file):
             services["going_to_be_updated"].append(subdir)
         else:
             print(f"Überspringe '{subdir}': Fehlende 'docker-compose.yaml', 'update.sh' oder 'run_update' Datei.")
